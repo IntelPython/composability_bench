@@ -1,0 +1,114 @@
+#!/usr/bin/env python
+import sys
+import time
+import timeit
+import numpy as np
+import dask.array as da
+from dask.diagnostics import ProgressBar
+import random
+import argparse
+import numba
+
+number_of_users = 400000
+features = 3260
+chunk = 10000
+
+try:
+    import numpy.random_intel as rnd
+    numpy_ver="intel"
+except:
+    import numpy.random as rnd
+    numpy_ver="std"
+
+parser = argparse.ArgumentParser(sys.argv[0])
+parser.add_argument('--math', required=False, default='dask', help="append number of threads used in benchmark to output resuts file")
+parser.add_argument('--features', required=False, default=features, help="Number of features to process")
+parser.add_argument('--users', required=False, default=number_of_users, help="Number of users to process")
+parser.add_argument('--chunk', required=False, default=chunk, help="Chunk to split dask arrays with")
+parser.add_argument('--verbose', '-v', required=False, default=False, help="show progress information")
+parser.add_argument('--prefix', required=False, default="@", help="Prepend result output with this string")
+args = parser.parse_args()
+
+features = int(args.features)
+number_of_users = int(args.users)
+chunk = int(args.chunk)
+
+print("Generating fake similarity")
+#topk = da.random.normal(size=(features, features), chunks=(features, features)).compute()
+topk = rnd.normal(size=(features, features))
+t = da.from_array(topk, chunks=(features, features))
+
+print("Generating fake user data")
+#users = da.random.normal(size=(features, number_of_users), chunks=(features, chunk)).compute()
+#users = rnd.normal(size=(features, number_of_users))
+users = np.zeros(shape=(features, number_of_users), dtype=np.float64)
+objects_idx = np.arange(features)
+rated = rnd.randint(0, 10, size=number_of_users, dtype=np.int32)
+for user in range(number_of_users):
+    rnd.shuffle(objects_idx)
+    items_rated = rated[user]
+    users[objects_idx[:items_rated], user] = rnd.randint(1, 5, size=items_rated, dtype=np.int32)
+
+u = da.from_array(users, chunks=(features, chunk))
+
+def run_numpy():
+    x = topk.dot(users)
+    x = np.where(users>0, 0, x)
+    return x.argmax(axis=0)
+
+
+def run_dask():
+    x = t.dot(u)
+    x = da.where(u>0, 0, x)
+    r = x.argmax(axis=0)
+    return r.compute()
+
+
+@numba.guvectorize('(f8[:],f8[:],i4[:])', '(n),(n)->()', nopython=True, target="parallel")
+def recommendation(x, u, r):
+    maxx = x[0]
+    r[0] = -1
+    for i in range(x.shape[0]):
+        if u[i] == 0 and maxx < x[i]: # if user has no rank for the item
+           maxx = x[i]
+           r[0] = i
+
+
+def run_numpy_numba():
+    x = topk.dot(users)
+    return recommendation(x, users)
+
+
+def run_dask_numba():
+    x = t.dot(u)
+    r = da.map_blocks(recommendation, x, u, drop_axis=0)
+    return r.compute()
+
+
+# ======================
+
+# ======================
+
+runner_name= 'run_'+args.math
+if runner_name not in globals():
+    print('--math=', args.math, " is not implemented, running numpy")
+    runner = run_numpy
+else:
+    runner = globals()[runner_name]
+
+if args.verbose:
+    ProgressBar().register()
+
+print("Running recommendation system")
+for i in range(3):
+    tic = time.time()
+    r = runner()
+    toc = time.time()
+    time_diff = toc - tic
+    if args.verbose:
+        print("Result shape: ", r.shape, " strides: ", r.strides, " ", r)
+
+    print("%s run=%d numpy=%s users=%d math=%s, chunk=%d in %.2f sec, %f users/sec" % \
+         (str(args.prefix), i, numpy_ver, number_of_users, args.math, chunk, time_diff,
+          float(number_of_users)/time_diff))
+    sys.stdout.flush()
