@@ -21,7 +21,7 @@ except:
     numpy_ver="std"
 
 parser = argparse.ArgumentParser(sys.argv[0])
-parser.add_argument('--math', required=False, default='dask', help="append number of threads used in benchmark to output resuts file")
+parser.add_argument('--math', required=False, default='dask_numba', help="append number of threads used in benchmark to output resuts file")
 parser.add_argument('--features', required=False, default=features, help="Number of features to process")
 parser.add_argument('--users', required=False, default=number_of_users, help="Number of users to process")
 parser.add_argument('--chunk', required=False, default=chunk, help="Chunk to split dask arrays with")
@@ -49,7 +49,7 @@ for user in range(number_of_users):
     items_rated = rated[user]
     users[objects_idx[:items_rated], user] = rnd.randint(1, 5, size=items_rated, dtype=np.int32)
 
-u = da.from_array(users, chunks=(features, chunk))
+u = da.from_array(users, chunks=(features, chunk), name=False)
 
 def run_numpy():
     x = topk.dot(users)
