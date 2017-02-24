@@ -21,10 +21,10 @@ except:
     numpy_ver="std"
 
 parser = argparse.ArgumentParser(sys.argv[0])
-parser.add_argument('--math', required=False, default='dask_numba', help="append number of threads used in benchmark to output resuts file")
+parser.add_argument('--math', required=False, default='dask_numba', help="Select computation approach: numpy, dask, numpy_numba, dask_numba")
 parser.add_argument('--features', required=False, default=features, help="Number of features to process")
 parser.add_argument('--users', required=False, default=number_of_users, help="Number of users to process")
-parser.add_argument('--chunk', required=False, default=chunk, help="Chunk to split dask arrays with")
+parser.add_argument('--chunk', required=False, default=chunk, help="Chunk size for splitting dask arrays")
 parser.add_argument('--verbose', '-v', required=False, default=False, help="show progress information")
 parser.add_argument('--prefix', required=False, default="@", help="Prepend result output with this string")
 args = parser.parse_args()
