@@ -4,7 +4,7 @@ Show effects of over-subscription and ways to fix that
 ## TBB module
 Install TBB module for Python in order to evaluate benefits of composable multithreading
 ```
-conda install -c intel TBB
+conda install -c intel tbb
 ```
 Alternatively, run `set_python_envs.sh` to set up environment with components of Intel Distribution for Python
 
