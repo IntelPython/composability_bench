@@ -35,7 +35,7 @@ def qr(x):
     print(time.time() - t0)
 
 sz = (440000, 1000)
-x01 = da.random.random(s, chunks=(440000, 1000))
-x22 = da.random.random(s, chunks=(20000, 1000))
-x44 = da.random.random(s, chunks=(10000, 1000))
+x01 = da.random.random(sz, chunks=(440000, 1000))
+x22 = da.random.random(sz, chunks=(20000, 1000))
+x44 = da.random.random(sz, chunks=(10000, 1000))
 qr(x01); qr(x22); qr(x44)
