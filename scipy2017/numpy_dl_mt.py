@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # Copyright (c) 2017, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,40 +24,24 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-import dask, timeit
-import dask.array as da
-import dask.multiprocessing
-import numpy as np
+import time, numpy as np
+from multiprocessing.pool import ThreadPool
+from multiprocessing.pool import Pool
+from functools import partial
 
+x = np.random.random((256, 256))
+y = np.random.random((8192, 8192))
+p = ThreadPool(44)
 
-class common_bench:
-    sx, sy = 320000, 1000
-    cx, cy = 10000,  1000
+t0 = time.time()
+mmul = partial(np.matmul, y)
+p.map(mmul, [y for i in range(6)], 6)
+print(time.time() - t0)
 
-class dask_bench(common_bench):
-    def setup(self):
-        self.x = da.random.random((self.sx, self.sy), chunks=(self.cx, self.cy))
+t0 = time.time()
+p.map(np.linalg.eig, [x for i in range(1408)], 64)
+print(time.time() - t0)
 
-    def _bench(self, get):
-        q, r = da.linalg.qr(self.x)
-        test = da.all(da.isclose(self.x, q.dot(r)))
-        test.compute(get=get)
-
-    def time_threaded(self):
-        self._bench(dask.threaded.get)
-
-    def time_multiproc(self):
-        self._bench(dask.multiprocessing.get)
-
-
-class numpy_bench(common_bench):
-    def setup(self):
-        self.x = np.random.random((self.sx, self.sy))
-
-    def time_pure(self):
-        q, r = np.linalg.qr(self.x)
-        test = np.allclose(self.x, q.dot(r))
-
-print("Numpy  ", timeit.repeat('b.time_pure()', 'from __main__ import numpy_bench as B; b=B();b.setup()', number=1, repeat=3))
-print("Dask-MT", timeit.repeat('b.time_threaded()', 'from __main__ import dask_bench as B; b=B();b.setup()', number=1, repeat=3))
-#print("Dask-MP", timeit.repeat('b.time_multiproc()', 'from __main__ import dask_bench as B; b=B();b.setup()', number=1, repeat=3))
+t0 = time.time()
+p.map(np.linalg.eig, [x for i in range(1408)], 32)
+print(time.time() - t0)
