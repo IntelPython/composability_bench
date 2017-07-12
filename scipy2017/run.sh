@@ -25,12 +25,13 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-DIR=$HOME/miniconda3
+DIR=$HOME/local/miniconda3
 CONDA=$DIR/bin/conda
 ENAME=intel3
+alias log=true
 mkdir -p $DIR
 [ -x $CONDA ] || (
-    echo "== Installing miniconda =="
+    log "== Installing miniconda =="
     pushd $DIR
     [ -f Miniconda3-latest-Linux-x86_64.sh ] || curl -O https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
     bash ./Miniconda3-latest-Linux-x86_64.sh -b -p $DIR -f
@@ -38,69 +39,69 @@ mkdir -p $DIR
     [ -x $CONDA ] || exit 1
 )
 [ -d $DIR/envs/$ENAME ] || (
-    echo "== Installing environment =="
+    log "== Installing environment =="
     $CONDA create -y -n $ENAME -c intel python=3.5 numpy tbb smp dask
 )
 source $DIR/bin/activate $ENAME
 if [ `strings $DIR/envs/$ENAME/lib/libiomp5.so | grep -c KMP_COMPOSABILITY` != 0 ]; then
-   echo "KMP_COMPOSABILITY support detected!"
+   log "KMP_COMPOSABILITY support detected!"
    comp=1
 else
-   echo "New OpenMP composability interface is not yet available"
+   log "New OpenMP composability interface is not yet available"
 fi
-
-echo "== Numpy (Static mode) =="
-echo "Default"
+set -x
+log "== Numpy (Static mode) =="
+log "Default"
 KMP_BLOCKTIME=0 python numpy_sl_mt.py
-echo "OMP_NUM_THREADS=1"
+log "OMP_NUM_THREADS=1"
 OMP_NUM_THREADS=1 python numpy_sl_mt.py
-echo "SMP"
+log "SMP"
 python -m smp -f 1 numpy_sl_mt.py
-echo "TBB"
+log "TBB"
 python -m tbb numpy_sl_mt.py
-echo "Exclusive mode"
+log "Exclusive mode"
 [ -z $comp ] || env KMP_COMPOSABILITY=mode=exclusive python numpy_sl_mt.py
-echo "Counting mode"
+log "Counting mode"
 [ -z $comp ] || env KMP_COMPOSABILITY=mode=counting python numpy_sl_mt.py
 
-echo "== Dask (Static mode) =="
-echo "Default"
+log "== Dask (Static mode) =="
+log "Default"
 KMP_BLOCKTIME=0 python dask_sh_mt.py
-echo "OMP_NUM_THREADS=1"
+log "OMP_NUM_THREADS=1"
 OMP_NUM_THREADS=1 python dask_sh_mt.py
-echo "SMP"
+log "SMP"
 python -m smp -f 1 dask_sh_mt.py
-echo "TBB"
+log "TBB"
 python -m tbb dask_sh_mt.py
-echo "Exclusive mode"
+log "Exclusive mode"
 [ -z $comp ] || env KMP_COMPOSABILITY=mode=exclusive python dask_sh_mt.py
-echo "Counting mode"
+log "Counting mode"
 [ -z $comp ] || env KMP_COMPOSABILITY=mode=counting python dask_sh_mt.py
 
-echo "== Numpy (Dynamic mode) =="
-echo "Default"
+log "== Numpy (Dynamic mode) =="
+log "Default"
 KMP_BLOCKTIME=0 python numpy_dl_mt.py
-echo "OMP_NUM_THREADS=1"
+log "OMP_NUM_THREADS=1"
 OMP_NUM_THREADS=1 python numpy_dl_mt.py
-echo "SMP"
+log "SMP"
 python -m smp -f 1 numpy_dl_mt.py
-echo "TBB"
+log "TBB"
 python -m tbb numpy_dl_mt.py
-echo "Exclusive mode"
+log "Exclusive mode"
 [ -z $comp ] || env KMP_COMPOSABILITY=mode=exclusive python numpy_dl_mt.py
-echo "Counting mode"
+log "Counting mode"
 [ -z $comp ] || env KMP_COMPOSABILITY=mode=counting python numpy_dl_mt.py
 
-echo "== Dask (Dynamic mode) =="
-echo "Default"
+log "== Dask (Dynamic mode) =="
+log "Default"
 KMP_BLOCKTIME=0 python dask_dh_mt.py
-echo "OMP_NUM_THREADS=1"
+log "OMP_NUM_THREADS=1"
 OMP_NUM_THREADS=1 python dask_dh_mt.py
-echo "SMP"
+log "SMP"
 python -m smp -f 1 dask_dh_mt.py
-echo "TBB"
+log "TBB"
 python -m tbb dask_dh_mt.py
-echo "Exclusive mode"
+log "Exclusive mode"
 [ -z $comp ] || env KMP_COMPOSABILITY=mode=exclusive python dask_dh_mt.py
-echo "Counting mode"
+log "Counting mode"
 [ -z $comp ] || env KMP_COMPOSABILITY=mode=counting python dask_dh_mt.py
