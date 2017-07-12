@@ -1,4 +1,4 @@
-#!/bin/bash -xe
+#!/bin/bash -e
 # Copyright (c) 2017, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,7 +28,8 @@
 DIR=$HOME/local/miniconda3
 CONDA=$DIR/bin/conda
 ENAME=intel3
-alias log=true
+alias log=':'
+shopt -s expand_aliases
 mkdir -p $DIR
 [ -x $CONDA ] || (
     log "== Installing miniconda =="
