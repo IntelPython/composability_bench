@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 # Copyright (c) 2017, Intel Corporation
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,7 +28,7 @@
 DIR=$HOME/local/miniconda3
 CONDA=$DIR/bin/conda
 ENAME=intel3
-alias log=':'
+alias log='echo'
 shopt -s expand_aliases
 mkdir -p $DIR
 [ -x $CONDA ] || (
@@ -41,15 +41,25 @@ mkdir -p $DIR
 )
 [ -d $DIR/envs/$ENAME ] || (
     log "== Installing environment =="
-    $CONDA create -y -n $ENAME -c intel python=3.5 numpy tbb smp dask
+    $CONDA create -y -n $ENAME -c intel python=3.5 numpy tbb smp dask || exit 1
 )
-source $DIR/bin/activate $ENAME
-if [ `strings $DIR/envs/$ENAME/lib/libiomp5.so | grep -c KMP_COMPOSABILITY` != 0 ]; then
-   log "KMP_COMPOSABILITY support detected!"
-   comp=1
+source $DIR/bin/activate $ENAME || exit 1
+LIBIOMP=$DIR/envs/$ENAME/lib/libiomp5.so
+[ -f $LIBIOMP ] || exit 1
+if [ `strings $LIBIOMP | grep -c KMP_COMPOSABILITY` != 0 ]; then
+   if [`strings $LIBIOMP | grep -c "Using exclusive mode instead"` != 0]; then
+      comp="KMP_COMPOSABILITY=mode=exclusive"
+   else
+      comp="KMP_COMPOSABILITY=mode=counting"
+   fi
+   log "$comp support detected for OpenMP!"
+elif [ `strings $LIBIOMP | grep -c KMP_FOREIGN_THREAD_LOCK` != 0 ]; then
+   log "Limited composable OpenMP support detected! (Deprecated interface)"
+   comp="KMP_FOREIGN_THREAD_LOCK=1"
 else
-   log "New OpenMP composability interface is not yet available"
+   log "New OpenMP composability interface is not available in this environment"
 fi
+alias log=':'
 set -x
 log "== Numpy (Static mode) =="
 log "Default"
@@ -60,10 +70,8 @@ log "SMP"
 python -m smp -f 1 numpy_sl_mt.py
 log "TBB"
 python -m tbb numpy_sl_mt.py
-log "Exclusive mode"
-[ -z $comp ] || env KMP_COMPOSABILITY=mode=exclusive python numpy_sl_mt.py
-log "Counting mode"
-[ -z $comp ] || env KMP_COMPOSABILITY=mode=counting python numpy_sl_mt.py
+log "Composable OpenMP"
+[ -z $comp ] || env $comp python numpy_sl_mt.py
 
 log "== Dask (Static mode) =="
 log "Default"
@@ -74,10 +82,8 @@ log "SMP"
 python -m smp -f 1 dask_sh_mt.py
 log "TBB"
 python -m tbb dask_sh_mt.py
-log "Exclusive mode"
-[ -z $comp ] || env KMP_COMPOSABILITY=mode=exclusive python dask_sh_mt.py
-log "Counting mode"
-[ -z $comp ] || env KMP_COMPOSABILITY=mode=counting python dask_sh_mt.py
+log "Composable OpenMP"
+[ -z $comp ] || env $comp python dask_sh_mt.py
 
 log "== Numpy (Dynamic mode) =="
 log "Default"
@@ -88,10 +94,8 @@ log "SMP"
 python -m smp -f 1 numpy_dl_mt.py
 log "TBB"
 python -m tbb numpy_dl_mt.py
-log "Exclusive mode"
-[ -z $comp ] || env KMP_COMPOSABILITY=mode=exclusive python numpy_dl_mt.py
-log "Counting mode"
-[ -z $comp ] || env KMP_COMPOSABILITY=mode=counting python numpy_dl_mt.py
+log "Composable OpenMP"
+[ -z $comp ] || env $comp python numpy_dl_mt.py
 
 log "== Dask (Dynamic mode) =="
 log "Default"
@@ -102,7 +106,5 @@ log "SMP"
 python -m smp -f 1 dask_dh_mt.py
 log "TBB"
 python -m tbb dask_dh_mt.py
-log "Exclusive mode"
-[ -z $comp ] || env KMP_COMPOSABILITY=mode=exclusive python dask_dh_mt.py
-log "Counting mode"
-[ -z $comp ] || env KMP_COMPOSABILITY=mode=counting python dask_dh_mt.py
+log "Composable OpenMP"
+[ -z $comp ] || env $comp python dask_dh_mt.py
