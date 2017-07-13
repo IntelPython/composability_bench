@@ -28,11 +28,10 @@
 DIR=$HOME/local/miniconda3
 CONDA=$DIR/bin/conda
 ENAME=intel3
-alias log='echo'
-shopt -s expand_aliases
+log='echo'
 mkdir -p $DIR
 [ -x $CONDA ] || (
-    log "== Installing miniconda =="
+    $log "== Installing miniconda =="
     pushd $DIR
     [ -f Miniconda3-latest-Linux-x86_64.sh ] || curl -O https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
     bash ./Miniconda3-latest-Linux-x86_64.sh -b -p $DIR -f
@@ -40,71 +39,71 @@ mkdir -p $DIR
     [ -x $CONDA ] || exit 1
 )
 [ -d $DIR/envs/$ENAME ] || (
-    log "== Installing environment =="
+    $log "== Installing environment =="
     $CONDA create -y -n $ENAME -c intel python=3.5 numpy tbb smp dask || exit 1
 )
 source $DIR/bin/activate $ENAME || exit 1
 LIBIOMP=$DIR/envs/$ENAME/lib/libiomp5.so
 [ -f $LIBIOMP ] || exit 1
 if [ `strings $LIBIOMP | grep -c KMP_COMPOSABILITY` != 0 ]; then
-   if [`strings $LIBIOMP | grep -c "Using exclusive mode instead"` != 0]; then
+   if [ `strings $LIBIOMP | grep -c "Using exclusive mode instead"` != 0 ]; then
       comp="KMP_COMPOSABILITY=mode=exclusive"
    else
       comp="KMP_COMPOSABILITY=mode=counting"
    fi
-   log "$comp support detected for OpenMP!"
+   $log "$comp support detected for OpenMP!"
 elif [ `strings $LIBIOMP | grep -c KMP_FOREIGN_THREAD_LOCK` != 0 ]; then
-   log "Limited composable OpenMP support detected! (Deprecated interface)"
+   $log "Limited composable OpenMP support detected! (Deprecated interface)"
    comp="KMP_FOREIGN_THREAD_LOCK=1"
 else
-   log "New OpenMP composability interface is not available in this environment"
+   $log "New OpenMP composability interface is not available in this environment"
 fi
-alias log=':'
+log=':'
 set -x
-log "== Numpy (Static mode) =="
-log "Default"
+$log "== Numpy (Static mode) =="
+$log "Default"
 KMP_BLOCKTIME=0 python numpy_sl_mt.py
-log "OMP_NUM_THREADS=1"
+$log "OMP_NUM_THREADS=1"
 OMP_NUM_THREADS=1 python numpy_sl_mt.py
-log "SMP"
+$log "SMP"
 python -m smp -f 1 numpy_sl_mt.py
-log "TBB"
+$log "TBB"
 python -m tbb numpy_sl_mt.py
-log "Composable OpenMP"
+$log "Composable OpenMP"
 [ -z $comp ] || env $comp python numpy_sl_mt.py
 
-log "== Dask (Static mode) =="
-log "Default"
+$log "== Dask (Static mode) =="
+$log "Default"
 KMP_BLOCKTIME=0 python dask_sh_mt.py
-log "OMP_NUM_THREADS=1"
+$log "OMP_NUM_THREADS=1"
 OMP_NUM_THREADS=1 python dask_sh_mt.py
-log "SMP"
+$log "SMP"
 python -m smp -f 1 dask_sh_mt.py
-log "TBB"
+$log "TBB"
 python -m tbb dask_sh_mt.py
-log "Composable OpenMP"
+$log "Composable OpenMP"
 [ -z $comp ] || env $comp python dask_sh_mt.py
 
-log "== Numpy (Dynamic mode) =="
-log "Default"
+$log "== Numpy (Dynamic mode) =="
+$log "Default"
 KMP_BLOCKTIME=0 python numpy_dl_mt.py
-log "OMP_NUM_THREADS=1"
+$log "OMP_NUM_THREADS=1"
 OMP_NUM_THREADS=1 python numpy_dl_mt.py
-log "SMP"
+$log "SMP"
 python -m smp -f 1 numpy_dl_mt.py
-log "TBB"
+$log "TBB"
 python -m tbb numpy_dl_mt.py
-log "Composable OpenMP"
+$log "Composable OpenMP"
 [ -z $comp ] || env $comp python numpy_dl_mt.py
 
-log "== Dask (Dynamic mode) =="
-log "Default"
+$log "== Dask (Dynamic mode) =="
+$log "Default"
 KMP_BLOCKTIME=0 python dask_dh_mt.py
-log "OMP_NUM_THREADS=1"
+$log "OMP_NUM_THREADS=1"
 OMP_NUM_THREADS=1 python dask_dh_mt.py
-log "SMP"
+$log "SMP"
 python -m smp -f 1 dask_dh_mt.py
-log "TBB"
+$log "TBB"
 python -m tbb dask_dh_mt.py
-log "Composable OpenMP"
+$log "Composable OpenMP"
 [ -z $comp ] || env $comp python dask_dh_mt.py
