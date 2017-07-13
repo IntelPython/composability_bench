@@ -40,22 +40,25 @@ import os.path
 import os
 import argparse
 from pprint import pprint
+import logging
 
 data_dir = './'
 
-tests = ("qr", "eig", "svd", "det", "inv", "cholesky", "dgemm")
+tests = ("qr", "eig", "svd", "inv", "cholesky", "dgemm") #, "det" - gives warning
+
+log = logging.getLogger(__name__)
 
 def prepare_default(N=100, dtype=np.double):
     return ( np.asarray(np.random.rand(N, N), dtype=dtype), )
     #return toc/trials, (4/3)*N*N*N*1e-9, times
 
 def prepare_eig(N=100, dtype=np.double):
-    N/=8
-    return ( np.asarray(np.random.rand(N, N), dtype=dtype), )
+    N/=4
+    return ( np.asarray(np.random.rand(int(N), int(N)), dtype=dtype), )
 
 def prepare_svd(N=100, dtype=np.double):
-    N/=4
-    return ( np.asarray(np.random.rand(N, N), dtype=dtype), False )
+    N/=2
+    return ( np.asarray(np.random.rand(int(N), int(N)), dtype=dtype), False )
 
 #det:    return toc/trials, N*N*N*1e-9, times
 
@@ -67,7 +70,7 @@ def kernel_dot(A, B):
 
 def prepare_dot(N=100, dtype=np.double):
     N=N*N*10
-    A = np.asarray(np.random.rand(N), dtype=dtype)
+    A = np.asarray(np.random.rand(int(N)), dtype=dtype)
     return (A, A)
     #return 1.0*toc/(trials), 2*N*N*N*1e-9, times
 
@@ -83,21 +86,21 @@ def prepare_ivi(N=100, dtype=np.double):
     return (A, B)
     #return 1.0*toc/(trials), 2*N*N*N*1e-9, times
 
+def prepare_dgemm(N=100, trials=3, dtype=np.double):
+    LARGEDIM = int(N*2)
+    KSIZE = int(N/2)
+    A = np.asarray(np.random.rand(LARGEDIM, KSIZE), dtype=dtype)
+    B = np.asarray(np.random.rand(KSIZE, LARGEDIM), dtype=dtype)
+    return (A, B)
+
 def kernel_dgemm(A, B):
     """
     DGEMM
     """
     A.dot(B)
 
-def prepare_dgemm(N=100, trials=3, dtype=np.double):
-    LARGEDIM = 7000
-    KSIZE = N
-    A = np.asarray(np.random.rand(LARGEDIM, KSIZE), dtype=dtype)
-    B = np.asarray(np.random.rand(KSIZE, LARGEDIM), dtype=dtype)
-    return (A, B)
-    #return 1.*toc/trials, 2E-9*LARGEDIM*LARGEDIM*KSIZE, times
-
 def prepare_cholesky(N=100, dtype=np.double):
+    N = int(N*2)
     A = np.asarray(np.random.rand(N, N), dtype=dtype)
     return ( A*A.transpose() + N*np.eye(N), )
     #return toc/trials, N*N*N/3.0*1e-9, times
@@ -121,7 +124,7 @@ def run_tbb(n, body):
     pool = TBB.task_group()
     global nested_tbb
     if 'nested_tbb' not in globals():
-        print("Creating TBB task_group")
+        log.debug("Creating TBB task_group")
         nested_tbb = TBB.task_arena()
     for i in n:
         b = tbb_job(i, body)
@@ -131,33 +134,43 @@ def run_tbb(n, body):
 def run_tbbpool(n, body):
     """TBB.Pool"""
     from TBB import Pool
-    global tp_pool, numthreads
-    if 'tp_pool' not in globals():
-        print("Creating TBB.Pool(%s)" % numthreads)
-        tp_pool = Pool(int(numthreads))
-    tp_pool.map(body, n)
+    global reused_pool, numthreads
+    if 'reused_pool' not in globals():
+        log.debug("Creating TBB.Pool(%s)" % numthreads)
+        reused_pool = Pool(int(numthreads))
+    reused_pool.map(body, n)
 
 def run_tp(n, body):
     """ThreadPool.map"""
     from multiprocessing.pool import ThreadPool
-    global tp_pool, numthreads
-    if 'tp_pool' not in globals():
-        print("Creating ThreadPool(%s)" % numthreads)
-        tp_pool = ThreadPool(int(numthreads))
-    tp_pool.map(body, n)
+    global reused_pool, numthreads
+    if 'reused_pool' not in globals():
+        log.debug("Creating ThreadPool(%s)" % numthreads)
+        reused_pool = ThreadPool(int(numthreads))
+    reused_pool.map(body, n)
+
+def run_pp(n, body):
+    """Process Pool.map"""
+    from multiprocessing.pool import Pool
+    global reused_pool, numthreads
+    global args
+    if 'reused_pool' not in globals():
+        log.debug("Creating Pool(%s)" % numthreads)
+        reused_pool = Pool(int(numthreads))
+    reused_pool.map(body, n)
 
 def run_tpaa(n, body):
     """ThreadPool.apply_async"""
     from multiprocessing.pool import ThreadPool
-    global tp_pool, numthreads
-    if 'tp_pool' not in globals():
-        print("Creating ThreadPool(%s) for apply_async()" % numthreads)
-        tp_pool = ThreadPool(int(numthreads))
-    tp_pool.map(body, range(n))
+    global reused_pool, numthreads
+    if 'reused_pool' not in globals():
+        log.debug("Creating ThreadPool(%s) for apply_async()" % numthreads)
+        reused_pool = ThreadPool(int(numthreads))
+    reused_pool.map(body, range(n))
     wait_list = []
     for i in n:
         b = tbb_job(i, body)
-        a = tp_pool.apply_async(b)
+        a = reused_pool.apply_async(b)
         wait_list.append(a)
     for a in wait_list:
         a.wait()
@@ -167,36 +180,49 @@ def run_seq(n, body):
     for i in n:
         body(i)
 
+def empty_work(i):
+    pass
+
+class body:
+    def __init__(self, trials):
+        self.trials = trials
+
+    def __call__(self, i):
+        global args, kernel, out
+        for j in range(self.trials):
+            t_start = time.time()
+            kernel(*args[i])
+            out[i,j] = time.time() - t_start
+
 def bench_on(runner, sym, Ns, trials, dtype=None):
+    global args, kernel, out, mkl_layer
     prepare = globals().get("prepare_"+sym, prepare_default)
     kernel  = globals().get("kernel_"+sym, None)
     if not kernel:
        kernel = getattr(np.linalg, sym)
     out_lvl = runner.__doc__.split('.')[0].strip()
     func_s  = kernel.__doc__.split('.')[0].strip()
-    print('Preparing input data for %s (%s).. ' % (sym, func_s))
-    args = [prepare(i) for i in Ns]
+    log.debug('Preparing input data for %s (%s).. ' % (sym, func_s))
+    args = [prepare(int(i)) for i in Ns]
     it = range(len(Ns))
     # pprint(Ns)
     out = np.empty(shape=(len(Ns), trials))
-    def body(i):
-        for j in range(trials):
-            t_start = time.time()
-            kernel(*args[i])
-            out[i,j] = time.time() - t_start
+    b = body(trials)
     tic, toc = (0, 0)
-    print('Warming up %s (%s).. ' % (sym, func_s))
-    runner(range(1000), lambda i: True)
+    log.debug('Warming up %s (%s).. ' % (sym, func_s))
+    runner(range(1000), empty_work)
     kernel(*args[0])
-    runner(range(1000), lambda i: True)
-    print('Benchmarking %s on %s: ' % (func_s, out_lvl))
+    runner(range(1000), empty_work)
+    log.debug('Benchmarking %s on %s: ' % (func_s, out_lvl))
     gc_old = gc.isenabled()
 #    gc.disable()
     tic = time.time()
-    runner(it, body)
+    runner(it, b)
     toc = time.time() - tic
     if gc_old:
         gc.enable()
+    if 'reused_pool' in globals():
+        del globals()['reused_pool']
 
     #calculate average time and min time and also keep track of outliers (max time in the loop)
     min_time = np.amin(out)
@@ -204,39 +230,11 @@ def bench_on(runner, sym, Ns, trials, dtype=None):
     mean_time = np.mean(out)
     stdev_time = np.std(out)
 
-    print("Min = %.5f, Max = %.5f, Mean = %.5f, stdev = %.5f " % (min_time, max_time, mean_time, stdev_time))
+    #print("Min = %.5f, Max = %.5f, Mean = %.5f, stdev = %.5f " % (min_time, max_time, mean_time, stdev_time))
     #final_times = [min_time, max_time, mean_time, stdev_time]
 
-    #pprint(out)
-    global mkl_layer
-    print('## %s: Outter:%s, Inner:%s, Wall seconds:%f' % (sym, out_lvl, mkl_layer, float(toc)))
-    #pprint(out)
+    print('## %s: Outter:%s, Inner:%s, Wall seconds:%f\n' % (sym, out_lvl, mkl_layer, float(toc)))
     return out
-
-def dump_data(data, data_dir, backend, algo, threads):
-    filename = backend + '-' + algo + '-' + str(threads) + '.pkl'
-    out_pickle = os.path.join(data_dir, filename)
-#    with open(out_pickle,'w') as data_file:
-#        pickle.dump(data, data_file)
-
-
-def print_data(Ns, inputdata, execution_times, benchmark, backend, threads):
-#    print("inputdata",inputdata)
-    i = 0
-    outfilename = backend + '-' + benchmark + '-' + threads + '-' + 'times.txt' 
-    with open(outfilename, 'w') as data_file:
-        for size in Ns:
-            print('Benchmark = %s, Size = %d, Average GFlop/sec = %.5f' %  (benchmark, size, inputdata[i][1]))
-            #final_times = [min_time, max_time, mean_time, stdev_time]
-            if i == 0:
-                data_file.write("#Threads = %s" % threads)
-                data_file.write("#Python Distro = %s" % pydistro)
-                data_file.write('#Benchmark,  Matrix Size,  Min Time,    Max Time,     Mean Time,    Stdev Time,  GFlops  \n' )
-                data_file.write('%s, %15d, %14.5f, %11.5f,  %11.5f,  %11.5f, %11.5f \n' %  (benchmark, size, execution_times[Ns[i]][0],  execution_times[Ns[i]][1],  execution_times[Ns[i]][2],  execution_times[Ns[i]][3], inputdata[i][1]))
-            else:
-                #data_file.write('Benchmark = %15s, Size = %5d,Min Time %.5f, Max Time = %.5f, Mean Time = %.5f, Stdev Time = %.5f, GFlops = %.5f \n' %  (benchmark, size, execution_times[i][0],  execution_times[i][1],  execution_times[i][2],  execution_times[i][3], inputdata[i][1]))
-                data_file.write('%s, %15d, %14.5f, %11.5f,  %11.5f,  %11.5f, %11.5f \n' %  (benchmark, size, execution_times[Ns[i]][0],  execution_times[Ns[i]][1],  execution_times[Ns[i]][2],  execution_times[Ns[i]][3], inputdata[i][1]))
-            i = i + 1
 
 
 if __name__ != '__main__':
@@ -244,14 +242,12 @@ if __name__ != '__main__':
 else:
 
     parser = argparse.ArgumentParser(sys.argv[0])
-    parser.add_argument('--pydistro', required=False, default='unknown', help="prepend name for output results file")
     parser.add_argument('--threads', required=True, help="append number of threads used in benchmark to output resuts file")
     parser.add_argument('--parallel', required=False, default='tp', help="Specify outermost parallelism")
-    parser.add_argument('--test', required=False, help="Run specified tests.")
+    parser.add_argument('--test', required=False, help="Run specified tests, comma-separated.")
     args = parser.parse_args()
 
-    global numthreads, pydistro, mkl_layer
-    pydistro = args.pydistro
+    global numthreads, mkl_layer
     numthreads = args.threads
     runner_name= 'run_'+args.parallel
     if runner_name not in globals():
@@ -260,73 +256,26 @@ else:
     else:
         runner = globals()[runner_name]
 
-    """
-    #add to the path the distro
-    if pydistro == 'intel':
-        myalias = 'pyintel27'
-    elif pydistro == 'anaconda':
-        myalias = 'pyana27'
-    elif pydistro == 'accelerate':
-        myalias = 'pyanamkl'
-
-    print('setting up in path %s' % myalias)
-    os.system(myalias)
-    """
-
-    try:
-        import mkl
-        have_mkl = True
-        backend = pydistro
-        print("Running with MKL Acceleration")
-    except ImportError:
-        have_mkl = False
-        myPythonVersion = sys.version
-        if 'Anaconda' in myPythonVersion:
-            backend = 'Anaconda'
-        elif 'Anaconda' not in myPythonVersion:
-            backend = pydistro
-        print("Running with normal backends")
-
-    #Set parameters for MKL and OMP
-    
-    #os.environ["MKL_NUM_THREADS"] = args.threads
-    #os.environ["MKL_DYNAMICS"] = 'FALSE'
-    #os.environ["OMP_NUM_THREADS"] = '1'
-  
-    #if numthreads == 32:
-    #    os.environ['MKL_NUM_THREADS'] = '32'
-    #else:
-    #    os.environ['MKL_NUM_THREADS'] = '1'
-
     mkl_layer = os.environ.get('MKL_THREADING_LAYER')
-    print('MKL_THREADING_LAYER = ', mkl_layer)
-    print('MKL_NUM_THREADS = ', os.environ.get('MKL_NUM_THREADS'))
-    print('OMP_NUM_THREADS = ', os.environ.get('OMP_NUM_THREADS'))
-    print('KMP_AFFINITY = ', os.environ.get('KMP_AFFINITY'))
+    log.debug('MKL_THREADING_LAYER = ', mkl_layer)
+    log.debug('MKL_NUM_THREADS = ', os.environ.get('MKL_NUM_THREADS'))
+    log.debug('OMP_NUM_THREADS = ', os.environ.get('OMP_NUM_THREADS'))
+    log.debug('KMP_AFFINITY = ', os.environ.get('KMP_AFFINITY'))
 
 
     trials = 3
     dtype = np.double
-    print('Number of iterations:', trials)
- 
-    #Ns = np.array([23000])
-    #det_data = bench(test_det, Ns, trials)
-    #dump_data(det_data, data_dir, backend, 'Determinant')
+    log.debug('Number of iterations:', trials)
 
-
-    #Ns = np.array([10000, 15000, 20000])
     #Ns = [600,1000,2000,5000]*10
-    Ns = [1024,3000]*17
+    Ns = [1500,3000]*17
     #Ns = [5000]*3 + [512]*207
     #Ns = [10]*100
-    #For PSF
-    #Ns =  np.array([15000,]*10)
-    #Ns =  np.array([100])
 
     if args.test:
         tests = args.test.split(",")
-    
+
     for sym in tests:
         bench_on(runner, sym, Ns, trials)
-    
+
 
