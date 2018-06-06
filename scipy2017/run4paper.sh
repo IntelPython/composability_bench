@@ -27,7 +27,7 @@
 
 DIR=$HOME/local/miniconda3
 CONDA=$DIR/bin/conda
-ENAME=intel3
+ENAME=composability
 log='echo'
 mkdir -p $DIR
 [ -x $CONDA ] || (
@@ -40,7 +40,7 @@ mkdir -p $DIR
 )
 [ -d $DIR/envs/$ENAME ] || (
     $log "== Installing environment =="
-    $CONDA create -y -n $ENAME -c intel python=3.5 numpy tbb smp dask || exit 1
+    $CONDA create -y -n $ENAME -c intel python=3 numpy tbb4py smp dask || exit 1
 )
 source $DIR/bin/activate $ENAME || exit 1
 LIBIOMP=$DIR/envs/$ENAME/lib/libiomp5.so
