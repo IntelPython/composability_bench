@@ -31,7 +31,7 @@ def qr(x):
     t0 = time.time()
     q, r = da.linalg.qr(x)
     test = da.all(da.isclose(x, q.dot(r)))
-    test.compute(num_workers=44)
+    test.compute()
     print(time.time() - t0)
 
 sz = (440000, 1000)

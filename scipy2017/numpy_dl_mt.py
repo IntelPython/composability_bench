@@ -31,7 +31,7 @@ from functools import partial
 
 x = np.random.random((256, 256))
 y = np.random.random((8192, 8192))
-p = ThreadPool(44)
+p = ThreadPool()
 
 t0 = time.time()
 mmul = partial(np.matmul, y)

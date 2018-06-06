@@ -24,17 +24,15 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-import time, numpy as np
+import time, sys, numpy as np
 from multiprocessing.pool import ThreadPool
-from multiprocessing.pool import Pool
 
-import sys
-nw = 88
+kw = {}
 if len(sys.argv) > 1:
-    nw = int(sys.argv[1])
+    kw["processes"] = int(sys.argv[1])
 
 data = np.random.random((256, 256))
-p = ThreadPool(nw)
+p = ThreadPool(**kw)
 for j in range(3):
     t0 = time.time()
     p.map(np.linalg.eig, [data for i in range(1024)])
