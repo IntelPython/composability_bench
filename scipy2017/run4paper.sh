@@ -27,7 +27,7 @@
 
 DIR=$HOME/local/miniconda3
 CONDA=$DIR/bin/conda
-ENAME=composability
+ENAME=scipy2018
 log='echo'
 mkdir -p $DIR
 [ -x $CONDA ] || (
@@ -46,64 +46,40 @@ source $DIR/bin/activate $ENAME || exit 1
 LIBIOMP=$DIR/envs/$ENAME/lib/libiomp5.so
 [ -f $LIBIOMP ] || exit 1
 if [ `strings $LIBIOMP | grep -c KMP_COMPOSABILITY` != 0 ]; then
-   if [ `strings $LIBIOMP | grep -c "Using exclusive mode instead"` != 0 ]; then
-      comp="KMP_COMPOSABILITY=mode=exclusive"
-   else
-      comp="KMP_COMPOSABILITY=mode=counting"
+   compe="KMP_COMPOSABILITY=mode=exclusive"
+   if [ `strings $LIBIOMP | grep -c "Using exclusive mode instead"` == 0 ]; then
+      compc="KMP_COMPOSABILITY=mode=counting"
    fi
-   $log "$comp support detected for OpenMP!"
+   $log "$compc $compe support detected for OpenMP!"
 elif [ `strings $LIBIOMP | grep -c KMP_FOREIGN_THREAD_LOCK` != 0 ]; then
    $log "Limited composable OpenMP support detected! (Deprecated interface)"
-   comp="KMP_FOREIGN_THREAD_LOCK=1"
+   compe="KMP_FOREIGN_THREAD_LOCK=1"
 else
    $log "New OpenMP composability interface is not available in this environment"
 fi
-log=':'
-set -x
-$log "== Numpy (Static mode) =="
-$log "Default"
-KMP_BLOCKTIME=0 python numpy_sl_mt.py
-$log "OMP_NUM_THREADS=1"
-OMP_NUM_THREADS=1 python numpy_sl_mt.py
-$log "SMP"
-python -m smp -f 1 numpy_sl_mt.py
-$log "TBB"
-python -m tbb numpy_sl_mt.py
-$log "Composable OpenMP"
-[ -z $comp ] || env $comp python numpy_sl_mt.py
 
-$log "== Dask (Static mode) =="
-$log "Default"
-KMP_BLOCKTIME=0 python dask_sh_mt.py
-$log "OMP_NUM_THREADS=1"
-OMP_NUM_THREADS=1 python dask_sh_mt.py
-$log "SMP"
-python -m smp -f 1 dask_sh_mt.py
-$log "TBB"
-python -m tbb dask_sh_mt.py
-$log "Composable OpenMP"
-[ -z $comp ] || env $comp python dask_sh_mt.py
-
-$log "== Numpy (Dynamic mode) =="
-$log "Default"
-KMP_BLOCKTIME=0 python numpy_dl_mt.py
-$log "OMP_NUM_THREADS=1"
-OMP_NUM_THREADS=1 python numpy_dl_mt.py
-$log "SMP"
-python -m smp -f 1 numpy_dl_mt.py
-$log "TBB"
-python -m tbb numpy_dl_mt.py
-$log "Composable OpenMP"
-[ -z $comp ] || env $comp python numpy_dl_mt.py
-
-$log "== Dask (Dynamic mode) =="
-$log "Default"
-KMP_BLOCKTIME=0 python dask_dh_mt.py
-$log "OMP_NUM_THREADS=1"
-OMP_NUM_THREADS=1 python dask_dh_mt.py
-$log "SMP"
-python -m smp -f 1 dask_dh_mt.py
-$log "TBB"
-python -m tbb dask_dh_mt.py
-$log "Composable OpenMP"
-[ -z $comp ] || env $comp python dask_dh_mt.py
+#log=':'
+#set -x
+: >results.csv
+for f in numpy_sl_mt dask_sh_mt numpy_dl_mt dask_dh_mt; do
+  echo == $f
+  (
+    $log "#Default"
+    KMP_BLOCKTIME=0 python $f.py
+    $log "#OMP=1"
+    OMP_NUM_THREADS=1 python $f.py
+    $log "#SMP"
+    python -m smp -f 1 $f.py
+    $log "#TBB"
+    python -m tbb $f.py
+    if [ ! -z $compe ]; then
+      $log "#OMP=exclusive"
+      env $compe python $f.py
+    fi
+    if [ ! -z $compc ]; then
+      $log "#OMP=counting"
+      env $compc python $f.py
+    fi
+  ) |& tee $f.log
+  sed -z 's/\n/ /g;s/#/\n/g' $f.log | sed "s/^/$f /;y/ /,/" >>results.csv
+done

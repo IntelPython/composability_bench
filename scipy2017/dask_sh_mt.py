@@ -23,7 +23,7 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
+# Dask-static
 import time, dask, dask.array as da
 x = da.random.random((440000, 1000), chunks=(10000, 1000))
 for i in range(3):
