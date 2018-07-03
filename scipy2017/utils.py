@@ -23,12 +23,14 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Static/balanced with high inner subscription, Dask-threaded
-import time, dask, dask.array as da
-x = da.random.random((440000, 1000), chunks=(10000, 1000))
-for i in range(3):
-    t0 = time.time()
-    q, r = da.linalg.qr(x)
-    test = da.all(da.isclose(x, q.dot(r)))
-    test.compute()
-    print(time.time() - t0)
+
+import sys
+
+pool_args = []
+if len(sys.argv) > 1:
+    pool_args += [int(sys.argv[1])]
+
+def noret(f, *args):
+  f(*args)
+  return
+

@@ -23,15 +23,15 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Numpy-dynamic
+# Dynamic/unbalanced with low inner subscription, multithreaded
 import time, numpy as np
 from multiprocessing.pool import ThreadPool
-from multiprocessing.pool import Pool
 from functools import partial
+from utils import pool_args
 
 x = np.random.random((256, 256))
 y = np.random.random((8192, 8192))
-p = ThreadPool()
+p = ThreadPool(*pool_args)
 
 t0 = time.time()
 mmul = partial(np.matmul, y)

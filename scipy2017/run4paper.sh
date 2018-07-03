@@ -60,7 +60,20 @@ fi
 
 #log=':'
 #set -x
-: >results.csv
+
+#: >scalability.csv
+for f in numpy_sl_mp numpy_dl_mp numpy_sl_mt numpy_dl_mt; do
+  echo == $f
+  (for p in 88 44 22 16 8 4 2 1; do
+    $log "#Default $p"
+    KMP_BLOCKTIME=0 python $f.py $p
+    $log "#SMP $p"
+    python -m smp -f 1 $f.py $p
+  done) |& tee $f.log
+  sed -z 's/\n/ /g;s/#/\n/g' $f.log | sed "s/^/$f /;y/ /,/" >>scalability.csv
+done
+
+#: >survey.csv
 for f in numpy_sl_mt dask_sh_mt numpy_dl_mt dask_dh_mt; do
   echo == $f
   (
@@ -81,5 +94,5 @@ for f in numpy_sl_mt dask_sh_mt numpy_dl_mt dask_dh_mt; do
       env $compc python $f.py
     fi
   ) |& tee $f.log
-  sed -z 's/\n/ /g;s/#/\n/g' $f.log | sed "s/^/$f /;y/ /,/" >>results.csv
+  sed -z 's/\n/ /g;s/#/\n/g' $f.log | sed "s/^/$f /;y/ /,/" >>survey.csv
 done

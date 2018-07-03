@@ -23,16 +23,14 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Numpy-static
+# Static/balanced with low inner subscription, multithreaded
 import time, sys, numpy as np
 from multiprocessing.pool import ThreadPool
-
-kw = {}
-if len(sys.argv) > 1:
-    kw["processes"] = int(sys.argv[1])
+from utils import pool_args
 
 data = np.random.random((256, 256))
-p = ThreadPool(**kw)
+p = ThreadPool(*pool_args)
+
 for j in range(3):
     t0 = time.time()
     p.map(np.linalg.eig, [data for i in range(1024)])

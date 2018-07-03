@@ -23,12 +23,18 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Static/balanced with high inner subscription, Dask-threaded
-import time, dask, dask.array as da
-x = da.random.random((440000, 1000), chunks=(10000, 1000))
-for i in range(3):
+# Static/balanced with low inner subscription, multi-processes
+import time, sys, numpy as np
+from multiprocessing import Pool
+from functools import partial
+from utils import pool_args, noret
+
+p = Pool(*pool_args)
+neig = partial(noret, np.linalg.eig)
+data = np.random.random((1024, 1024))
+
+if __name__ == '__main__':
+  for j in range(3):
     t0 = time.time()
-    q, r = da.linalg.qr(x)
-    test = da.all(da.isclose(x, q.dot(r)))
-    test.compute()
+    p.map(neig, [data for i in range(254)])
     print(time.time() - t0)

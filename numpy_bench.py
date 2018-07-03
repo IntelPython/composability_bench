@@ -53,12 +53,12 @@ def main():
 
     if len(sys.argv) > 1:
         np = int(sys.argv[1])
-    print("Number of processes: " + str(np))
+    print("Number of processes: ", np)
 
     pool_type = "multiprocessing"
     if len(sys.argv) > 2:
         pool_type = sys.argv[2]
-    print("Pool type: " + pool_type)
+    print("Pool type: ", pool_type)
 
     if pool_type == "multiprocessing":
         p = Pool(np)
