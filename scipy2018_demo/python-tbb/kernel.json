@@ -1,0 +1,6 @@
+{
+ "argv": ["python", "-m", "tbb", "-m", "IPython.kernel",
+          "-f", "{connection_file}"],
+ "display_name": "Python 3/TBB",
+ "language": "python"
+}
