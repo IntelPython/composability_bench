@@ -25,4 +25,5 @@ For running a remote session from Windows machine, copy&edit `demo_config_exampl
 then run `start_jupyter.bat`. In Jupyter, open `composability_demo.ipynb` and follow instructions.
 
 ## See also
-https://software.intel.com/en-us/blogs/2016/04/04/unleash-parallel-performance-of-python-programs
+- Introductionary blog: https://software.intel.com/en-us/blogs/2016/04/04/unleash-parallel-performance-of-python-programs
+- Details in the whitepaper: http://conference.scipy.org/proceedings/scipy2018/pdfs/anton_malakhov.pdf
