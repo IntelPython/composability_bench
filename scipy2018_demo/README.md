@@ -15,7 +15,7 @@ python demo.py
 KMP_BLOCKTIME=0 python demo.py  # Align settings with GNU OpenMP
 python -m tbb demo.py
 python -m smp demo.py
-python -m smp -c demo.py
+python -m smp -o demo.py
 ```
 
 ## Jupyter notebook
