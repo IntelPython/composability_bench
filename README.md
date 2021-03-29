@@ -10,14 +10,31 @@ Alternatively, run `set_python_envs.sh` to set up environment with components of
 
 ## Running
 Effects are visible on big enough machine with 32 and more cores.
-Run following modes:
+Run following modes for example:
 
 ```
+python collab_filt.py
+python dask_bench2.py
 python -m tbb collab_filt.py
 python -m tbb dask_bench2.py
 python -m smp collab_filt.py
 python -m smp dask_bench2.py
 ```
+
+## Composability Modes
+There are the folloing composability modes for testing:
+
+### -m tbb
+Enables TBB threading for MKL, Numpy, Dask, Python's multiprocessing.ThreadPool
+
+### -m tbb --ipc
+Same as `-m tbb` but also enables interprocess coordination.
+
+### -m smp
+Statically allocates CPU resources between the nested parallel regions using affinity masks and OpenMP API. Supports both multithreading and multiprocessing parallelism.
+
+### -m smp -o
+Enables `KMP_COMPOSABILITY=mode=counting` for Intel OpenMP runtime when parallel regions are ordered using a semaphore. Supports both multithreading and multiprocessing parallelism.
 
 ## See also
 Blog: https://software.intel.com/en-us/blogs/2016/04/04/unleash-parallel-performance-of-python-programs
