@@ -34,4 +34,4 @@ curl -O https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh \
 #export ACCEPT_INTEL_PYTHON_EULA=yes
 CONDA=$DIR/bin/conda
 
-$CONDA create -y -n intel3 -c intel python=3 numpy scipy scikit-learn tbb dask numba
+$CONDA create -y -n intel3 -c intel python=3 numpy scipy scikit-learn tbb4py smp dask numba

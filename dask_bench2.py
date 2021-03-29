@@ -39,16 +39,16 @@ class dask_bench(common_bench):
     def setup(self):
         self.x = da.random.random((self.sx, self.sy), chunks=(self.cx, self.cy))
 
-    def _bench(self, get):
+    def _bench(self, sch):
         q, r = da.linalg.qr(self.x)
         test = da.all(da.isclose(self.x, q.dot(r)))
-        test.compute(get=get)
+        test.compute(scheduler=sch)
 
     def time_threaded(self):
-        self._bench(dask.threaded.get)
+        self._bench('threads')
 
     def time_multiproc(self):
-        self._bench(dask.multiprocessing.get)
+        self._bench('processes')
 
 
 class numpy_bench(common_bench):
@@ -59,6 +59,7 @@ class numpy_bench(common_bench):
         q, r = np.linalg.qr(self.x)
         test = np.allclose(self.x, q.dot(r))
 
+print("Warning: it takes minutes to complete..")
 print("Numpy  ", timeit.repeat('b.time_pure()', 'from __main__ import numpy_bench as B; b=B();b.setup()', number=1, repeat=3))
 print("Dask-MT", timeit.repeat('b.time_threaded()', 'from __main__ import dask_bench as B; b=B();b.setup()', number=1, repeat=3))
 #print("Dask-MP", timeit.repeat('b.time_multiproc()', 'from __main__ import dask_bench as B; b=B();b.setup()', number=1, repeat=3))

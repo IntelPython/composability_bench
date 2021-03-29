@@ -33,6 +33,6 @@ t0 = time.time()
 
 q, r = da.linalg.qr(x)
 test = da.all(da.isclose(x, q.dot(r)))
-test.compute() # compute(get=dask.threaded.get) by default
+test.compute() # compute(scheduler="threads") by default
 
 print(time.time() - t0)
