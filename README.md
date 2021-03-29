@@ -6,7 +6,7 @@ Install TBB and SMP modules for Python in order to evaluate composable multithre
 ```
 conda install -c intel tbb4py smp
 ```
-If not sure how to do this, just run `set_python_envs.sh` to set up conda environment with all the necessary components of Intel Distribution for Python.
+If not sure how to do this, just run `set_python_envs.sh` to set up conda environment with all the necessary components of Intel Distribution for Python and follow instructions for environment activation, e.g. `conda activate intel3`.
 
 ## Running
 Effects are visible on big enough machine with 32 and more cores.
