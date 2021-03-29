@@ -1,12 +1,12 @@
 # Composability Benchmarks
-Show effects of over-subscription and ways to fix that
+Show effects of oversubscription and ways to fix that
 
 ## Installation
-Install TBB and SMP modules for Python in order to evaluate benefits of composable multithreading
+Install TBB and SMP modules for Python in order to evaluate composable multithreading:
 ```
 conda install -c intel tbb4py smp
 ```
-Alternatively, run `set_python_envs.sh` to set up environment with components of Intel Distribution for Python
+If not sure how to do this, just run `set_python_envs.sh` to set up conda environment with all the necessary components of Intel Distribution for Python.
 
 ## Running
 Effects are visible on big enough machine with 32 and more cores.
@@ -24,16 +24,16 @@ python -m smp dask_bench2.py
 ## Composability Modes
 There are the folloing composability modes for testing:
 
-### -m tbb
+### `-m tbb`
 Enables TBB threading for MKL, Numpy, Dask, Python's multiprocessing.ThreadPool
 
-### -m tbb --ipc
-Same as `-m tbb` but also enables interprocess coordination.
+### `-m tbb --ipc`
+Same as `-m tbb` but also enables interprocess coordination for multiprocessing applications.
 
-### -m smp
+### `-m smp`
 Statically allocates CPU resources between the nested parallel regions using affinity masks and OpenMP API. Supports both multithreading and multiprocessing parallelism.
 
-### -m smp -o
+### `-m smp -o`
 Enables `KMP_COMPOSABILITY=mode=counting` for Intel OpenMP runtime when parallel regions are ordered using a semaphore. Supports both multithreading and multiprocessing parallelism.
 
 ## See also
