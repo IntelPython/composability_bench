@@ -37,6 +37,5 @@ Statically allocates CPU resources between the nested parallel regions using aff
 Enables `KMP_COMPOSABILITY=mode=counting` for Intel OpenMP runtime when parallel regions are ordered using a semaphore. Supports both multithreading and multiprocessing parallelism.
 
 ## See also
-Blog: https://software.intel.com/en-us/blogs/2016/04/04/unleash-parallel-performance-of-python-programs
 
 Paper: "[Composable Multi-Threading and Multi-Processing for Numeric Libraries](http://conference.scipy.org/proceedings/scipy2018/pdfs/anton_malakhov.pdf)" by Anton Malakhov, David Liu, Anton Gorshkov, Terry Wilmarth. Proceedings of the 17th Python in Science Conference (SciPy 2018), Austin, Texas (July 9 - 15, 2018). DOI 10.25080/Majora-4af1f417-003
