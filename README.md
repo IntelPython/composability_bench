@@ -1,5 +1,5 @@
 # Composability Benchmarks
-Show effects of oversubscription and ways to fix that
+Show effects of oversubscription and ways to fix that.
 
 ## Installation
 Install TBB and SMP modules for Python in order to evaluate composable multithreading:
