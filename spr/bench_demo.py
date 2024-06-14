@@ -24,7 +24,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-# http://software.intel.com/en-us/intel-mkl
+# https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html
 # https://code.google.com/p/numexpr/wiki/NumexprVML
 
 from __future__ import print_function
